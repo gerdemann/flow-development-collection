@@ -194,7 +194,30 @@ abstract class Arrays
     public static function getValueByPath(array &$array, $path)
     {
         if (is_string($path)) {
-            $path = explode('.', $path);
+            if (strpos($path, '[') === -1) {
+                $path = explode('.', $path);
+            } else {
+                $mapping = [];
+
+                $path = preg_replace_callback(
+                    '#\\[.*\\]#',
+                    static function ($matches) use (&$mapping) {
+                        $md5 = md5($matches[0]);
+                        $mapping[$md5] = trim($matches[0], '[]');
+                        return $md5;
+                    },
+                    $path
+                );
+
+                $path = explode('.', $path);
+
+                $path = array_map(
+                    static function ($value) use ($mapping) {
+                        return isset($mapping[$value]) ? $mapping[$value] : $value;
+                    },
+                    $path
+                );
+            }
         } elseif (!is_array($path)) {
             throw new \InvalidArgumentException('getValueByPath() expects $path to be string or array, "' . gettype($path) . '" given.', 1304950007);
         }
